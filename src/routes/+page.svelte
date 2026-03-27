@@ -209,7 +209,7 @@
 
 <div class="page-shell">
 	<section class="hero">
-		<h1>Take a picture of the objects below</h1>
+		<h1>Take pictures of the objects below</h1>
 	</section>
 
 	<section class="missions" aria-label="Mission targets">
