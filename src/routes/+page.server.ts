@@ -4,13 +4,13 @@ import { buildSubmissionImageUrl } from '$lib/submissions';
 import { listPlayerSubmissions } from '$lib/server/database';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.player) {
 		throw error(500, 'Player session is not available.');
 	}
 
 	const submissions = Object.fromEntries(
-		listPlayerSubmissions(locals.player.id).map((submission) => [
+		(await listPlayerSubmissions(locals.player.id)).map((submission) => [
 			submission.missionId,
 			{
 				id: submission.id,

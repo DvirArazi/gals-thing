@@ -2,8 +2,8 @@ import { error } from '@sveltejs/kit';
 import { getSubmissionImage } from '$lib/server/database';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = ({ params }) => {
-	const submission = getSubmissionImage(params.submissionId);
+export const GET: RequestHandler = async ({ params }) => {
+	const submission = await getSubmissionImage(params.submissionId);
 
 	if (!submission) {
 		throw error(404, 'Image not found.');
@@ -15,7 +15,7 @@ export const GET: RequestHandler = ({ params }) => {
 	return new Response(imageBytes, {
 		headers: {
 			'content-type': submission.imageMime,
-			'cache-control': 'no-store'
+			'cache-control': 'private, max-age=31536000, immutable'
 		}
 	});
 };

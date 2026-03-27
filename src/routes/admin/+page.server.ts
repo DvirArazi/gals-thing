@@ -3,13 +3,13 @@ import { buildSubmissionImageUrl } from '$lib/submissions';
 import { listAllSubmissions, listPlayers } from '$lib/server/database';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = () => {
-	const players = listPlayers().map((player, index) => ({
+export const load: PageServerLoad = async () => {
+	const players = (await listPlayers()).map((player, index) => ({
 		id: player.id,
 		label: `Player ${index + 1}`,
 		createdAt: player.createdAt
 	}));
-	const submissions = listAllSubmissions();
+	const submissions = await listAllSubmissions();
 	const submissionLookup = new Map(
 		submissions.map((submission) => [`${submission.missionId}:${submission.playerId}`, submission] as const)
 	);

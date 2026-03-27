@@ -1,18 +1,59 @@
 <script lang="ts">
-	import Modal from '$lib/components/Modal.svelte';
+	import { blurFade, slideUp } from '$lib/transitions/modal';
 	import type { PageData } from './$types';
 
 	let { data } = $props<{ data: PageData }>();
 	let previewOpen = $state(false);
+	let previewDialogElement = $state<HTMLDivElement | null>(null);
 	let selectedSubmission = $state<{
-		title: string;
-		imageUrl: string;
+		alt: string;
+		imageSrc: string;
 	} | null>(null);
 
-	const openPreview = (title: string, imageUrl: string) => {
-		selectedSubmission = { title, imageUrl };
+	const openPreview = (event: MouseEvent, alt: string) => {
+		const trigger = event.currentTarget as HTMLButtonElement | null;
+		const image = trigger?.querySelector('img');
+
+		if (!image) {
+			return;
+		}
+
+		selectedSubmission = {
+			alt,
+			imageSrc: image.currentSrc || image.src
+		};
 		previewOpen = true;
 	};
+
+	const closePreview = () => {
+		previewOpen = false;
+	};
+
+	const handlePreviewBackdropClick = (event: MouseEvent) => {
+		if (event.target === event.currentTarget) {
+			closePreview();
+		}
+	};
+
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (previewOpen && event.key === 'Escape') {
+			closePreview();
+		}
+	};
+
+	$effect(() => {
+		if (!previewOpen) {
+			return;
+		}
+
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		queueMicrotask(() => previewDialogElement?.focus());
+
+		return () => {
+			document.body.style.overflow = previousOverflow;
+		};
+	});
 
 	$effect(() => {
 		if (!previewOpen) {
@@ -24,6 +65,8 @@
 <svelte:head>
 	<title>Admin Submissions</title>
 </svelte:head>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="admin-shell">
 	<section class="hero">
@@ -55,7 +98,6 @@
 							<th scope="row">
 								<div class="mission-cell">
 									<img src={row.referenceImage} alt={`${row.label} reference`} loading="lazy" />
-									<span>{row.label}</span>
 								</div>
 							</th>
 
@@ -65,7 +107,8 @@
 										<button
 											class="submission-thumb"
 											type="button"
-											onclick={() => openPreview(`${row.label} · ${cell.playerLabel}`, cell.imageUrl)}
+											onclick={(event) =>
+												openPreview(event, `Submitted photo from ${cell.playerLabel}`)}
 										>
 											<img
 												src={cell.imageUrl}
@@ -86,17 +129,33 @@
 	{/if}
 </div>
 
-<Modal bind:open={previewOpen} title={selectedSubmission?.title ?? 'Submission'}>
-	{#if selectedSubmission}
-		<div class="preview-shell">
+{#if previewOpen && selectedSubmission}
+	<div
+		class="preview-backdrop"
+		role="presentation"
+		onclick={handlePreviewBackdropClick}
+		transition:blurFade
+	>
+		<div
+			bind:this={previewDialogElement}
+			class="preview-modal"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Submitted photo"
+			tabindex="-1"
+			transition:slideUp
+		>
+			<button class="preview-close" type="button" aria-label="Close photo" onclick={closePreview}>
+				×
+			</button>
 			<img
 				class="preview-image"
-				src={selectedSubmission.imageUrl}
-				alt={selectedSubmission.title}
+				src={selectedSubmission.imageSrc}
+				alt={selectedSubmission.alt}
 			/>
 		</div>
-	{/if}
-</Modal>
+	</div>
+{/if}
 
 <style>
 	:global(body) {
@@ -188,8 +247,8 @@
 	}
 
 	.submission-table th:first-child {
-		text-align: left;
-		min-width: 12rem;
+		width: 4.75rem;
+		min-width: 4.75rem;
 	}
 
 	.submission-table tr:last-child th,
@@ -205,14 +264,14 @@
 	.mission-cell {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
+		justify-content: center;
 	}
 
 	.mission-cell img {
 		display: block;
-		width: 3.6rem;
-		height: 3.6rem;
-		border-radius: 0.9rem;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 0.8rem;
 		object-fit: cover;
 		box-shadow: 0 0.8rem 1.6rem rgba(15, 23, 42, 0.12);
 	}
@@ -257,19 +316,83 @@
 		font-weight: 700;
 	}
 
-	.preview-shell {
+	.preview-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 50;
 		display: grid;
+		place-items: center;
+		padding:
+			max(1rem, env(safe-area-inset-top))
+			max(1rem, env(safe-area-inset-right))
+			max(1rem, env(safe-area-inset-bottom))
+			max(1rem, env(safe-area-inset-left));
+		background-color: rgba(15, 23, 42, 0.48);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	.preview-modal {
+		position: relative;
+		width: fit-content;
+		max-width: min(
+			42rem,
+			calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right))
+		);
+		border-radius: 1rem;
+		overflow: hidden;
+		line-height: 0;
+		box-shadow: 0 1.5rem 3rem rgba(15, 23, 42, 0.36);
+	}
+
+	.preview-close {
+		position: absolute;
+		top: 0.85rem;
+		right: 0.85rem;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border: 0;
+		border-radius: 999px;
+		background: rgba(15, 23, 42, 0.46);
+		color: #f8fafc;
+		font-size: 1.5rem;
+		line-height: 1;
+		padding: 0 0 0.08rem;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	.preview-close:focus-visible {
+		outline: 3px solid #99f6e4;
+		outline-offset: 2px;
 	}
 
 	.preview-image {
 		display: block;
-		width: min(100%, 34rem);
-		max-height: 72dvh;
-		margin: 0 auto;
-		border-radius: 1rem;
-		object-fit: contain;
-		background: rgba(255, 255, 255, 0.88);
-		box-shadow: 0 1rem 2.4rem rgba(15, 23, 42, 0.16);
+		width: auto;
+		max-width: min(
+			42rem,
+			calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right))
+		);
+		max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+		height: auto;
+	}
+
+	@media (max-width: 640px) {
+		.preview-backdrop {
+			padding-left: max(1.25rem, env(safe-area-inset-left));
+			padding-right: max(1.25rem, env(safe-area-inset-right));
+		}
+
+		.preview-modal,
+		.preview-image {
+			max-width: calc(100vw - 2.5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+		}
 	}
 
 	@media (max-width: 640px) {
@@ -279,16 +402,13 @@
 		}
 
 		.submission-table th:first-child {
-			min-width: 10.5rem;
-		}
-
-		.mission-cell {
-			gap: 0.65rem;
+			width: 4rem;
+			min-width: 4rem;
 		}
 
 		.mission-cell img {
-			width: 3.1rem;
-			height: 3.1rem;
+			width: 2.6rem;
+			height: 2.6rem;
 		}
 
 		.submission-thumb {

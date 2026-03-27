@@ -16,9 +16,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const existingSessionToken = event.cookies.get(playerSessionCookie);
 	const existingPlayer = existingSessionToken
-		? findPlayerBySessionToken(existingSessionToken)
+		? await findPlayerBySessionToken(existingSessionToken)
 		: null;
-	const player = existingPlayer ?? createPlayer();
+	const player = existingPlayer ?? (await createPlayer());
 
 	if (!existingPlayer) {
 		event.cookies.set(playerSessionCookie, player.sessionToken, {

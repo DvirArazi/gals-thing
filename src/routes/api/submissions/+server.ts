@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return json({ message: 'Uploaded image is too large.' }, { status: 413 });
 	}
 
-	const submission = saveSubmission({
+	const submission = await saveSubmission({
 		playerId: locals.player.id,
 		missionId,
 		imageBytes: new Uint8Array(await image.arrayBuffer()),

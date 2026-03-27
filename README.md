@@ -8,10 +8,20 @@ Install dependencies and start the dev server:
 
 ```sh
 npm install
+vercel env pull .env.local
 npm run dev
 ```
 
-The app stores player sessions and submitted photos in a local SQLite file at `.data/gals-thing.sqlite`.
+The app now stores player sessions and submitted photos in Postgres, which works on Vercel and persists across deployments.
+
+The server looks for a Postgres connection string in one of these environment variables:
+
+- `DATABASE_URL`
+- `POSTGRES_URL`
+- `POSTGRES_URL_NON_POOLING`
+- `NEON_DATABASE_URL`
+
+For the smoothest Vercel setup, add Neon from the Vercel Marketplace and then pull the generated env vars locally with `vercel env pull .env.local`.
 
 ## Production build
 
@@ -49,7 +59,7 @@ Create a production deployment:
 vercel --prod
 ```
 
-Important: the current database is plain SQLite on the local filesystem. That works locally, but on Vercel the writable filesystem is ephemeral, so player/session/photo data will not persist across cold starts or new deployments without moving the database to persistent storage.
+Important: the database connection string must be configured in Vercel before the deployed app can create players or accept uploads.
 
 ## Gameplay and admin routes
 
