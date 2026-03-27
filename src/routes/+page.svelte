@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { SubmissionPreview } from '$lib/submissions';
 	import { blurFade, slideUp } from '$lib/transitions/modal';
+	import { onDestroy } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let missionSubmissions = $state<Record<string, SubmissionPreview>>({});
+	let localSubmissionPreviewUrls = $state<Record<string, string>>({});
 	let uploadStates = $state<Record<string, 'uploading' | 'saved' | 'error'>>({});
 	let previewOpen = $state(false);
 	let previewDialogElement = $state<HTMLDivElement | null>(null);
@@ -20,6 +22,28 @@
 	const compressionQualities = [0.86, 0.78, 0.7, 0.62];
 
 	const missionLabel = (index: number) => `Mission ${index + 1}`;
+
+	const setLocalSubmissionPreviewUrl = (missionId: string, imageUrl: string) => {
+		const previousUrl = localSubmissionPreviewUrls[missionId];
+
+		if (previousUrl && previousUrl !== imageUrl) {
+			URL.revokeObjectURL(previousUrl);
+		}
+
+		localSubmissionPreviewUrls[missionId] = imageUrl;
+	};
+
+	const clearLocalSubmissionPreviewUrl = (missionId: string) => {
+		const previousUrl = localSubmissionPreviewUrls[missionId];
+
+		if (!previousUrl) {
+			return;
+		}
+
+		URL.revokeObjectURL(previousUrl);
+		const { [missionId]: _removed, ...remainingUrls } = localSubmissionPreviewUrls;
+		localSubmissionPreviewUrls = remainingUrls;
+	};
 
 	const fitWithin = (width: number, height: number, maxDimension: number) => {
 		if (Math.max(width, height) <= maxDimension) {
@@ -110,6 +134,8 @@
 
 		try {
 			const compressedImage = await compressImageForUpload(file);
+			const localPreviewUrl = URL.createObjectURL(compressedImage);
+			setLocalSubmissionPreviewUrl(missionId, localPreviewUrl);
 			const formData = new FormData();
 			formData.set('missionId', missionId);
 			formData.set('image', compressedImage, `${missionId}.jpg`);
@@ -127,6 +153,7 @@
 			missionSubmissions[missionId] = payload.submission;
 			uploadStates[missionId] = 'saved';
 		} catch (error) {
+			clearLocalSubmissionPreviewUrl(missionId);
 			uploadStates[missionId] = 'error';
 			console.error(error);
 		}
@@ -199,6 +226,12 @@
 			previewedSubmission = null;
 		}
 	});
+
+	onDestroy(() => {
+		for (const imageUrl of Object.values(localSubmissionPreviewUrls)) {
+			URL.revokeObjectURL(imageUrl);
+		}
+	});
 </script>
 
 <svelte:head>
@@ -241,7 +274,7 @@
 							aria-label={`Open your photo for ${missionLabel(index)}`}
 						>
 							<img
-								src={missionSubmissions[mission.id].imageUrl}
+								src={localSubmissionPreviewUrls[mission.id] ?? missionSubmissions[mission.id].imageUrl}
 								alt={`Your submission for ${missionLabel(index)}`}
 								loading="lazy"
 							/>
@@ -340,7 +373,7 @@
 	h1 {
 		margin: 0;
 		font-size: clamp(2rem, 10vw, 4.6rem);
-		line-height: 0.92;
+		line-height: 1.1;
 		text-wrap: balance;
 	}
 
