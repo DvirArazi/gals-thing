@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">Broadcast tower</title>
+  <desc id="desc">A red broadcast tower on a sunset background.</desc>
+  <defs>
+    <linearGradient id="sunset" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fdba74"/>
+      <stop offset="100%" stop-color="#7c2d12"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="180" rx="24" fill="url(#sunset)"/>
+  <rect y="134" width="240" height="46" fill="#431407"/>
+  <path d="M120 34 88 134h64z" fill="#f87171"/>
+  <path d="M120 34v100M101 72h38M94 100h52" stroke="#fee2e2" stroke-width="6" stroke-linecap="round"/>
+  <path d="M92 40c12-12 44-12 56 0M84 26c18-18 60-18 72 0" fill="none" stroke="#fecaca" stroke-width="6" stroke-linecap="round"/>
+</svg>

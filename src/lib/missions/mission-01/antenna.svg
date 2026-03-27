@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">Antenna array</title>
+  <desc id="desc">Three rooftop antennas sending out a signal.</desc>
+  <rect width="240" height="180" rx="24" fill="#0f172a"/>
+  <rect y="126" width="240" height="54" fill="#1e293b"/>
+  <path d="M72 126 92 38m0 0 20 88M92 38v88" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round"/>
+  <path d="M138 126 158 50m0 0 20 76M158 50v76" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round"/>
+  <path d="M60 44c14-14 50-14 64 0M48 30c24-24 78-24 102 0" fill="none" stroke="#22d3ee" stroke-width="6" stroke-linecap="round"/>
+  <path d="M126 58c10-10 36-10 46 0M118 44c16-16 50-16 66 0" fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">Emblem shards</title>
+  <desc id="desc">Four floating geometric shards.</desc>
+  <rect width="240" height="180" rx="24" fill="#111827"/>
+  <polygon points="48,40 92,24 110,62 70,84" fill="#22c55e"/>
+  <polygon points="142,26 188,38 172,84 132,68" fill="#f97316"/>
+  <polygon points="58,108 98,92 112,138 76,156" fill="#38bdf8"/>
+  <polygon points="146,94 192,110 170,156 132,136" fill="#e879f9"/>
+</svg>
