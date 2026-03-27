@@ -1,0 +1,65 @@
+name: Deploy to Vercel
+
+# If the Vercel dashboard is already connected directly to this GitHub repository,
+# disable one of the two deployment paths to avoid duplicate deployments.
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VERCEL_ORG_ID: team_lrQDRIlMgUViW8fabSjA8JtC
+      VERCEL_PROJECT_ID: prj_ygvAdhUC2mBvv6nANWLVCcmGUKxO
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Select Vercel target
+        id: target
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+            echo "flags=--prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=preview" >> "$GITHUB_OUTPUT"
+            echo "flags=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=${{ steps.target.outputs.environment }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build project
+        run: vercel build ${{ steps.target.outputs.flags }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy project
+        id: deploy
+        run: echo "url=$(vercel deploy --prebuilt ${{ steps.target.outputs.flags }} --token=${{ secrets.VERCEL_TOKEN }})" >> "$GITHUB_OUTPUT"
+
+      - name: Write workflow summary
+        run: |
+          {
+            echo "### Vercel Deployment"
+            echo ""
+            echo "- Target: ${{ steps.target.outputs.environment }}"
+            echo "- URL: ${{ steps.deploy.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
