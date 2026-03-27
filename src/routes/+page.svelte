@@ -209,12 +209,7 @@
 
 <div class="page-shell">
 	<section class="hero">
-		<p class="eyebrow">Mission Board</p>
-		<h1>Take a picture of each matching object</h1>
-		<p class="lede">
-			Tap the camera on a card, capture the real-world match, and the photo will be saved to
-			your player session on this device.
-		</p>
+		<h1>Take a picture of the objects below</h1>
 	</section>
 
 	<section class="missions" aria-label="Mission targets">
@@ -342,28 +337,11 @@
 		text-align: left;
 	}
 
-	.eyebrow {
-		margin: 0 0 0.6rem;
-		color: #0f766e;
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-	}
-
 	h1 {
 		margin: 0;
 		font-size: clamp(2rem, 10vw, 4.6rem);
 		line-height: 0.92;
 		text-wrap: balance;
-	}
-
-	.lede {
-		margin: 0.85rem 0 0;
-		max-width: 34rem;
-		font-size: 0.98rem;
-		line-height: 1.6;
-		color: #475569;
 	}
 
 	.missions {
@@ -389,6 +367,7 @@
 	.reference-frame {
 		position: relative;
 		border-radius: inherit;
+		background: #efe4d3;
 	}
 
 	.reference-image {
@@ -397,6 +376,7 @@
 		height: 100%;
 		aspect-ratio: 4 / 3;
 		border-radius: inherit;
+		background: #efe4d3;
 		object-fit: cover;
 	}
 
@@ -592,11 +572,6 @@
 		.hero {
 			margin-bottom: 2rem;
 			text-align: center;
-		}
-
-		.lede {
-			margin-left: auto;
-			margin-right: auto;
 		}
 
 		.missions {

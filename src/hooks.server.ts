@@ -4,7 +4,7 @@ import { createPlayer, findPlayerBySessionToken } from '$lib/server/database';
 
 const playerSessionCookie = 'player_session';
 const sessionDurationSeconds = 60 * 60 * 24 * 365;
-const playerRouteExclusions = ['/admin', '/submission-images/'];
+const playerRouteExclusions = ['/admin', '/danger', '/submission-images/'];
 
 const shouldBootstrapPlayer = (pathname: string) =>
 	!playerRouteExclusions.some((prefix) => pathname.startsWith(prefix));

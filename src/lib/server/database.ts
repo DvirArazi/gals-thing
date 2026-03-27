@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 
 const databaseUrlEnvKeys = [
@@ -9,7 +10,7 @@ const databaseUrlEnvKeys = [
 
 const resolveDatabaseUrl = (): string | null => {
 	for (const key of databaseUrlEnvKeys) {
-		const value = process.env[key];
+		const value = env[key];
 
 		if (value) {
 			return value;
@@ -168,6 +169,19 @@ export const listPlayers = async (): Promise<PlayerSummary[]> => {
 		id: player.id,
 		createdAt: player.createdAt
 	}));
+};
+
+export const deleteAllPlayers = async (): Promise<number> => {
+	await ensureDatabase();
+
+	const rows = await getSql().query(
+		`
+			DELETE FROM players
+			RETURNING id
+		`
+	);
+
+	return rows.length;
 };
 
 export const saveSubmission = async (input: {

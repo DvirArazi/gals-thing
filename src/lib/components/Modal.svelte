@@ -166,12 +166,16 @@
 
 	.content :global(.bonus-checklist label) {
 		display: flex;
+		flex-direction: row;
 		align-items: center;
 		gap: 0.85rem;
+		justify-content: flex-start;
 		padding: 0.85rem 1rem;
 		border-radius: 1rem;
 		background: rgba(255, 255, 255, 0.65);
 		box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+		font-family: Arial, sans-serif;
+		text-align: right;
 		-webkit-tap-highlight-color: transparent;
 	}
 
@@ -216,6 +220,7 @@
 	}
 
 	.content :global(.bonus-checklist input + span) {
+		flex: 1;
 		transition:
 			color 120ms ease,
 			text-decoration-color 120ms ease;
