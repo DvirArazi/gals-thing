@@ -1,5 +1,163 @@
 <script lang="ts">
-	import { missions } from '$lib/missions';
+	import Modal from '$lib/components/Modal.svelte';
+	import type { SubmissionPreview } from '$lib/submissions';
+	import type { PageData } from './$types';
+
+	let { data } = $props<{ data: PageData }>();
+
+	let missionSubmissions = $state<Record<string, SubmissionPreview>>({});
+	let uploadStates = $state<Record<string, 'uploading' | 'saved' | 'error'>>({});
+	let previewOpen = $state(false);
+	let previewedSubmission = $state<{
+		title: string;
+		imageUrl: string;
+	} | null>(null);
+
+	const uploadTargetBytes = 3_500_000;
+	const initialMaxDimension = 1600;
+	const minimumMaxDimension = 960;
+	const compressionQualities = [0.86, 0.78, 0.7, 0.62];
+
+	const missionLabel = (index: number) => `Mission ${index + 1}`;
+
+	const fitWithin = (width: number, height: number, maxDimension: number) => {
+		if (Math.max(width, height) <= maxDimension) {
+			return { width, height };
+		}
+
+		if (width >= height) {
+			return {
+				width: maxDimension,
+				height: Math.max(1, Math.round((height / width) * maxDimension))
+			};
+		}
+
+		return {
+			width: Math.max(1, Math.round((width / height) * maxDimension)),
+			height: maxDimension
+		};
+	};
+
+	const loadImage = (url: string) =>
+		new Promise<HTMLImageElement>((resolve, reject) => {
+			const image = new Image();
+
+			image.onload = () => resolve(image);
+			image.onerror = () => reject(new Error('The selected image could not be read.'));
+			image.src = url;
+		});
+
+	const canvasToBlob = (canvas: HTMLCanvasElement, quality: number) =>
+		new Promise<Blob>((resolve, reject) => {
+			canvas.toBlob(
+				(blob) => {
+					if (!blob) {
+						reject(new Error('The image could not be prepared for upload.'));
+						return;
+					}
+
+					resolve(blob);
+				},
+				'image/jpeg',
+				quality
+			);
+		});
+
+	const compressImageForUpload = async (file: File) => {
+		const objectUrl = URL.createObjectURL(file);
+
+		try {
+			const image = await loadImage(objectUrl);
+			const canvas = document.createElement('canvas');
+			const context = canvas.getContext('2d');
+
+			if (!context) {
+				throw new Error('Camera uploads are not supported in this browser.');
+			}
+
+			const originalMaxDimension = Math.max(image.naturalWidth, image.naturalHeight);
+			let maxDimension = Math.min(originalMaxDimension, initialMaxDimension);
+
+			while (true) {
+				const targetSize = fitWithin(image.naturalWidth, image.naturalHeight, maxDimension);
+				canvas.width = targetSize.width;
+				canvas.height = targetSize.height;
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+				for (const quality of compressionQualities) {
+					const blob = await canvasToBlob(canvas, quality);
+
+					if (blob.size <= uploadTargetBytes || maxDimension <= minimumMaxDimension) {
+						return blob;
+					}
+				}
+
+				if (maxDimension <= minimumMaxDimension) {
+					return canvasToBlob(canvas, compressionQualities.at(-1) ?? 0.62);
+				}
+
+				maxDimension = Math.max(minimumMaxDimension, Math.round(maxDimension * 0.82));
+			}
+		} finally {
+			URL.revokeObjectURL(objectUrl);
+		}
+	};
+
+	const uploadMissionImage = async (missionId: string, file: File) => {
+		uploadStates[missionId] = 'uploading';
+
+		try {
+			const compressedImage = await compressImageForUpload(file);
+			const formData = new FormData();
+			formData.set('missionId', missionId);
+			formData.set('image', compressedImage, `${missionId}.jpg`);
+
+			const response = await fetch('/api/submissions', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				throw new Error('The upload could not be saved.');
+			}
+
+			const payload = (await response.json()) as { submission: SubmissionPreview };
+			missionSubmissions[missionId] = payload.submission;
+			uploadStates[missionId] = 'saved';
+		} catch (error) {
+			uploadStates[missionId] = 'error';
+			console.error(error);
+		}
+	};
+
+	const handleCameraChange = async (event: Event, missionId: string) => {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+
+		input.value = '';
+
+		if (!file || uploadStates[missionId] === 'uploading') {
+			return;
+		}
+
+		await uploadMissionImage(missionId, file);
+	};
+
+	const openSubmissionPreview = (title: string, imageUrl: string) => {
+		previewedSubmission = { title, imageUrl };
+		previewOpen = true;
+	};
+
+	$effect(() => {
+		missionSubmissions = { ...data.submissions };
+	});
+
+	$effect(() => {
+		if (!previewOpen) {
+			previewedSubmission = null;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -9,36 +167,86 @@
 <div class="page-shell">
 	<section class="hero">
 		<p class="eyebrow">Mission Board</p>
-		<h1>Objectives for the player</h1>
+		<h1>Take a picture of each matching object</h1>
 		<p class="lede">
-			Each mission is loaded from its own folder. The text comes from a `.txt` file and every
-			image in that same folder is shown as supporting reference art.
+			Tap the camera on a card, capture the real-world match, and the photo will be saved to
+			your player session on this device.
 		</p>
 	</section>
 
-	<section class="missions" aria-label="Mission list">
-		{#each missions as mission, index}
-			<article class="mission-card">
-				<div class="mission-copy">
-					<p class="mission-number">MISSION {index + 1}</p>
-					<p class="mission-text">{mission.instruction}</p>
-				</div>
+	<section class="missions" aria-label="Mission targets">
+		{#each data.missions as mission, index}
+			<article class="mission-card" style={`--mission-layer: ${data.missions.length - index}`}>
+				<div class="reference-frame">
+					<img
+						class="reference-image"
+						src={mission.image}
+						alt={`Mission reference ${index + 1}`}
+						loading="lazy"
+					/>
 
-				<div class="image-strip">
-					{#each mission.images as image, imageIndex}
-						<figure class="image-frame">
+					<input
+						id={`camera-${mission.id}`}
+						class="camera-input"
+						type="file"
+						accept="image/*"
+						capture="environment"
+						onchange={(event) => handleCameraChange(event, mission.id)}
+					/>
+
+					{#if missionSubmissions[mission.id]}
+						<button
+							class="mission-snapshot"
+							type="button"
+							onclick={() =>
+								openSubmissionPreview(
+									missionLabel(index),
+									missionSubmissions[mission.id].imageUrl
+								)}
+							aria-label={`Open your photo for ${missionLabel(index)}`}
+						>
 							<img
-								src={image}
-								alt={`${mission.id} reference ${imageIndex + 1}`}
+								src={missionSubmissions[mission.id].imageUrl}
+								alt={`Your submission for ${missionLabel(index)}`}
 								loading="lazy"
 							/>
-						</figure>
-					{/each}
+						</button>
+					{/if}
+
+					<label
+						class:busy={uploadStates[mission.id] === 'uploading'}
+						class="camera-button"
+						for={`camera-${mission.id}`}
+						aria-label={`Capture a photo for ${missionLabel(index)}`}
+					>
+						{#if uploadStates[mission.id] === 'uploading'}
+							<span class="camera-spinner" aria-hidden="true"></span>
+						{:else}
+							<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+								<path
+									d="M7.5 6.5h2.12l1.3-1.8h2.16l1.3 1.8h2.12A2.8 2.8 0 0 1 19.3 9.3v7.2a2.8 2.8 0 0 1-2.8 2.8H7.5a2.8 2.8 0 0 1-2.8-2.8V9.3a2.8 2.8 0 0 1 2.8-2.8Z"
+									stroke="currentColor"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+								<circle cx="12" cy="12.9" r="3.2" stroke="currentColor" stroke-width="1.8" />
+							</svg>
+						{/if}
+					</label>
 				</div>
 			</article>
 		{/each}
 	</section>
 </div>
+
+<Modal bind:open={previewOpen} title={previewedSubmission?.title ?? 'Submission'}>
+	{#if previewedSubmission}
+		<div class="preview-shell">
+			<img class="preview-image" src={previewedSubmission.imageUrl} alt={previewedSubmission.title} />
+		</div>
+	{/if}
+</Modal>
 
 <style>
 	:global(html) {
@@ -107,12 +315,14 @@
 		gap: 1rem;
 		max-width: 72rem;
 		margin: 0 auto;
+		grid-template-columns: minmax(0, 1fr);
 	}
 
 	.mission-card {
-		display: grid;
-		gap: 1rem;
-		padding: 1rem;
+		position: relative;
+		z-index: var(--mission-layer, 1);
+		margin: 0;
+		overflow: visible;
 		border: 1px solid rgba(15, 23, 42, 0.08);
 		border-radius: 1.35rem;
 		background: rgba(255, 255, 255, 0.78);
@@ -120,54 +330,152 @@
 		backdrop-filter: blur(12px);
 	}
 
-	.mission-copy {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
+	.reference-frame {
+		position: relative;
+		border-radius: inherit;
 	}
 
-	.mission-number {
-		margin: 0 0 0.65rem;
-		color: #9a3412;
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-	}
-
-	.mission-text {
-		margin: 0;
-		font-size: 1rem;
-		line-height: 1.6;
-		color: #334155;
-	}
-
-	.image-strip {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.8rem;
-	}
-
-	.image-frame {
-		margin: 0;
-		overflow: hidden;
-		border-radius: 1rem;
-		background: #e2e8f0;
-		box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
-		aspect-ratio: 4 / 3;
-	}
-
-	img {
+	.reference-image {
 		display: block;
 		width: 100%;
 		height: 100%;
+		aspect-ratio: 4 / 3;
+		border-radius: inherit;
 		object-fit: cover;
+	}
+
+	.camera-input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		border: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		clip-path: inset(50%);
+	}
+
+	.camera-button {
+		position: absolute;
+		right: 1rem;
+		bottom: 1rem;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		width: 3.6rem;
+		height: 3.6rem;
+		border-radius: 999px;
+		background:
+			radial-gradient(circle at top, rgba(255, 255, 255, 0.24), transparent 58%),
+			linear-gradient(145deg, #f97316, #ea580c);
+		color: #fff7ed;
+		box-shadow: 0 1rem 2rem rgba(154, 52, 18, 0.3);
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
+		transition:
+			transform 180ms ease,
+			box-shadow 180ms ease,
+			filter 180ms ease;
+	}
+
+	.camera-button svg {
+		width: 1.45rem;
+		height: 1.45rem;
+	}
+
+	.camera-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 1.2rem 2.4rem rgba(154, 52, 18, 0.34);
+		filter: saturate(1.06);
+	}
+
+	.camera-button:focus-visible {
+		outline: 3px solid #fed7aa;
+		outline-offset: 3px;
+	}
+
+	.camera-button.busy {
+		pointer-events: none;
+	}
+
+	.camera-spinner {
+		width: 1.35rem;
+		height: 1.35rem;
+		border: 2px solid rgba(255, 247, 237, 0.32);
+		border-top-color: #fff7ed;
+		border-radius: 999px;
+		animation: spin 720ms linear infinite;
+	}
+
+	.mission-snapshot {
+		position: absolute;
+		left: -0.45rem;
+		bottom: -0.35rem;
+		z-index: 3;
+		display: block;
+		width: 30px;
+		padding: 0;
+		border: 0;
+		border-radius: 0.45rem;
+		background: transparent;
+		box-shadow: none;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		transform: rotate(20deg);
+		transform-origin: center;
+		touch-action: manipulation;
+		transition:
+			transform 180ms ease,
+			box-shadow 180ms ease;
+	}
+
+	.mission-snapshot:hover {
+		transform: rotate(5deg) translateY(-2px);
+	}
+
+	.mission-snapshot:focus-visible {
+		outline: none;
+	}
+
+	.mission-snapshot img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.45rem;
+		box-shadow: 0 0.9rem 1.8rem rgba(15, 23, 42, 0.24);
+	}
+
+	.preview-shell {
+		display: grid;
+	}
+
+	.preview-image {
+		display: block;
+		width: min(100%, 28rem);
+		max-height: 68dvh;
+		margin: 0 auto;
+		border-radius: 1rem;
+		object-fit: contain;
+		background: rgba(255, 255, 255, 0.88);
+		box-shadow: 0 1rem 2.4rem rgba(15, 23, 42, 0.16);
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	@media (min-width: 640px) {
 		.page-shell {
 			padding-left: max(1.5rem, env(safe-area-inset-left));
 			padding-right: max(1.5rem, env(safe-area-inset-right));
+		}
+
+		.missions {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 
@@ -184,37 +492,22 @@
 
 		.missions {
 			gap: 1.5rem;
-		}
-
-		.mission-card {
-			grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-			gap: 1.5rem;
-			padding: 1.5rem;
-			border-radius: 1.75rem;
-		}
-
-		.mission-number {
-			font-size: 0.82rem;
-		}
-
-		.mission-text {
-			font-size: 1.08rem;
-			line-height: 1.7;
-		}
-
-		.image-strip {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-			align-content: center;
-		}
-
-		.image-frame {
-			border-radius: 1.2rem;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
 	}
 
-	@media (max-width: 359px) {
-		.image-strip {
-			grid-template-columns: 1fr;
+	@media (max-width: 640px) {
+		.mission-snapshot {
+			left: -0.35rem;
+			bottom: -0.25rem;
+			width: 160px;
+		}
+
+		.camera-button {
+			right: 0.85rem;
+			bottom: 0.85rem;
+			width: 3.25rem;
+			height: 3.25rem;
 		}
 	}
 </style>

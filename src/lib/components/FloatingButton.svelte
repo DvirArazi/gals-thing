@@ -40,6 +40,8 @@
 		color: #1c1917;
 		box-shadow: 0 1rem 2rem rgba(124, 45, 18, 0.22);
 		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
 		transition:
 			transform 180ms ease,
 			box-shadow 180ms ease,

@@ -11,6 +11,8 @@ npm install
 npm run dev
 ```
 
+The app stores player sessions and submitted photos in a local SQLite file at `.data/gals-thing.sqlite`.
+
 ## Production build
 
 Create a production build locally:
@@ -46,6 +48,13 @@ Create a production deployment:
 ```sh
 vercel --prod
 ```
+
+Important: the current database is plain SQLite on the local filesystem. That works locally, but on Vercel the writable filesystem is ephemeral, so player/session/photo data will not persist across cold starts or new deployments without moving the database to persistent storage.
+
+## Gameplay and admin routes
+
+- `/`: creates a player on first visit, stores a `player_session` cookie, and lets the player upload one photo per mission
+- `/admin`: shows all submitted photos in a mission-by-player table with click-to-expand previews
 
 ## Continuous deployment
 

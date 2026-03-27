@@ -143,7 +143,11 @@
 		background: rgba(148, 163, 184, 0.18);
 		color: inherit;
 		font-size: 1.5rem;
+		line-height: 1;
+		padding: 0 0 0.08rem;
 		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
 		transition: background 180ms ease;
 	}
 
@@ -190,14 +194,60 @@
 		border-radius: 1rem;
 		background: rgba(255, 255, 255, 0.65);
 		box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+		-webkit-tap-highlight-color: transparent;
 	}
 
 	.content :global(.bonus-checklist input) {
 		width: 1.1rem;
 		height: 1.1rem;
 		margin: 0;
-		accent-color: #d97706;
+		align-self: center;
 		flex-shrink: 0;
+		appearance: none;
+		-webkit-appearance: none;
+		border: 2px solid #d97706;
+		border-radius: 0.3rem;
+		background-color: #fff7ed;
+		background-position: center;
+		background-repeat: no-repeat;
+		background-size: 0.86rem 0.86rem;
+		box-shadow: none;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
+		transition:
+			background-color 120ms ease,
+			border-color 120ms ease;
+	}
+
+	.content :global(.bonus-checklist input:checked) {
+		border-color: #d97706;
+		background-color: #d97706;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='white' d='M6.3 11.2 2.8 7.7l1.4-1.4 2.1 2.1 5.5-5.5 1.4 1.4z'/%3E%3C/svg%3E");
+	}
+
+	.content :global(.bonus-checklist input:checked:active),
+	.content :global(.bonus-checklist input:checked:focus),
+	.content :global(.bonus-checklist input:checked:focus-visible) {
+		border-color: #d97706;
+		background-color: #d97706;
+	}
+
+	.content :global(.bonus-checklist input:focus-visible) {
+		outline: 2px solid #fdba74;
+		outline-offset: 2px;
+	}
+
+	.content :global(.bonus-checklist input + span) {
+		transition:
+			color 120ms ease,
+			text-decoration-color 120ms ease;
+	}
+
+	.content :global(.bonus-checklist input:checked + span) {
+		color: #64748b;
+		text-decoration: line-through;
+		text-decoration-thickness: 2px;
+		text-decoration-color: rgba(100, 116, 139, 0.85);
 	}
 
 	@media (max-width: 640px) {
@@ -224,7 +274,7 @@
 		}
 
 		.content :global(.bonus-checklist label) {
-			align-items: flex-start;
+			align-items: center;
 			padding: 0.8rem 0.9rem;
 		}
 	}
